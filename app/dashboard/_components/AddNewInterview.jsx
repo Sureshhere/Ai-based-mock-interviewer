@@ -51,17 +51,16 @@ const AddNewInterview = () => {
       .replace("```", "")
       .trim();
 
-    // Check if we have a valid JSON string by trying to parse it
     const parsedJson = JSON.parse(MockJsonResp);
     console.log(parsedJson);
-    setJsonResponse(parsedJson); // Now you're setting parsed JSON data
+    setJsonResponse(parsedJson); 
 
     if (parsedJson) {
       const resp = await db
         .insert(MockInterview)
         .values({
           mockId: uuidv4(),
-          jsonMockResp: MockJsonResp, // You can store the raw response here if needed
+          jsonMockResp: MockJsonResp, 
           jobPosition: jobPosition,
           jobDesc: jobDesc,
           jobExperience: jobExperience,
