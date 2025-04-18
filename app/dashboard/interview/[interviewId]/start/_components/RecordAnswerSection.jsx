@@ -103,7 +103,7 @@ const RecordAnswerSection = ({
         ", User Answer:" +
         userAnswer +
         " , Depends on question and user answer for given interview question" +
-        " please give us rating for answer and feedback as area of improvement if any " +
+        " please give us rating for answer (You have to rate it our of 10. Don't be very very precise during evaluation, no very strict evaluation of answer. Just check whether the user knows the basics or not and rate according to it) and feedback as area of improvement if any " +
         "in just 3 to 5 lines to improve it in JSON format with rating field and feedback field";
 
       const result = await chatSession.sendMessage(feedbackPrompt);
@@ -111,10 +111,8 @@ const RecordAnswerSection = ({
       let MockJsonResp = result.response.text();
       console.log(MockJsonResp);
 
-      // Removing possible extra text around JSON
       MockJsonResp = MockJsonResp.replace("```json", "").replace("```", "");
 
-      // Attempt to parse JSON
       let jsonFeedbackResp;
       try {
         jsonFeedbackResp = JSON.parse(MockJsonResp);
@@ -135,8 +133,9 @@ const RecordAnswerSection = ({
 
       if (resp) {
         toast("User Answer recorded successfully");
-      }
+        
       setUserAnswer("");
+      }
       setLoading(false);
     } catch (error) {
       console.error(error);

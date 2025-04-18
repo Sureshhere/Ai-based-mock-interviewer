@@ -40,13 +40,16 @@ const Feedback = ({ params }) => {
         .select()
         .from(UserAnswer)
         .where(eq(UserAnswer.mockIdRef, id))
-        .orderBy(UserAnswer.id);
-
+        .orderBy(UserAnswer.createdAt); // Ensure correct order
+  
+      console.log("Fetched Feedback Data:", result); // Debugging step
+  
       setFeedbackList(result);
     } catch (error) {
       console.error("Error fetching feedback:", error);
     }
   };
+  
 
   // ✅ Calculate overall rating
   const overallRating = useMemo(() => {

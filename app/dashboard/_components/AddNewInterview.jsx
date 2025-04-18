@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -32,60 +31,62 @@ const AddNewInterview = () => {
   const router = useRouter();
 
   const onSubmit = async (e) => {
-  setLoading(true);
-  e.preventDefault();
-  console.log(jobPosition, jobDesc, jobExperience);
+    e.preventDefault();
+    setLoading(true);
 
-  const InputPrompt = `
-    Job Positions: ${jobPosition}, 
-    Job Description: ${jobDesc}, 
-    Years of Experience: ${jobExperience}. 
-    Based on this information, please provide 5 interview questions with answers in JSON format, ensuring "Question" and "Answer" are fields in the JSON.
-  `;
+    const InputPrompt = `
+      Job Position: ${jobPosition || "Not Provided"},
+      Job Description: ${jobDesc || "Not Provided"},
+      Years of Experience: ${jobExperience || "Not Provided"},
+      Generate 5 interview questions and answers. The questions should be technical questions only. No general or behavioral questions. Also don't ask to write code.
+      Please respond **only with valid JSON** formatted as follows:
+      [
+        {
+          "Question": "What is polymorphism?",
+          "Answer": "Polymorphism is the ability of an object to take on multiple forms..."
+        }
+      ]
+    `;
 
-  try {
-    const result = await chatSession.sendMessage(InputPrompt);
-    let MockJsonResp = result.response
-      .text()
-      .replace("```json", "")
-      .replace("```", "")
-      .trim();
+    try {
+      const result = await chatSession.sendMessage(InputPrompt);
+      const rawResponse = await result.response.text();
 
-    // Check if we have a valid JSON string by trying to parse it
-    const parsedJson = JSON.parse(MockJsonResp);
-    console.log(parsedJson);
-    setJsonResponse(parsedJson); // Now you're setting parsed JSON data
+      const jsonMatch = rawResponse.match(/\[.*\]/s);
+      if (!jsonMatch) throw new Error("Invalid AI response format");
 
-    if (parsedJson) {
-      const resp = await db
-        .insert(MockInterview)
-        .values({
-          mockId: uuidv4(),
-          jsonMockResp: MockJsonResp, // You can store the raw response here if needed
-          jobPosition: jobPosition,
-          jobDesc: jobDesc,
-          jobExperience: jobExperience,
-          createdBy: user?.primaryEmailAddress?.emailAddress,
-          createdAt: moment().format("YYYY-MM-DD"),
-        })
-        .returning({ mockId: MockInterview.mockId });
+      const parsedJson = JSON.parse(jsonMatch[0]); 
+      console.log(parsedJson);
+      setJsonResponse(parsedJson);
 
-      console.log("Inserted ID:", resp);
+      if (parsedJson) {
+        const resp = await db
+          .insert(MockInterview)
+          .values({
+            mockId: uuidv4(),
+            jsonMockResp: JSON.stringify(parsedJson), 
+            jobPosition,
+            jobDesc,
+            jobExperience,
+            createdBy: user?.primaryEmailAddress?.emailAddress,
+            createdAt: moment().format("YYYY-MM-DD"),
+          })
+          .returning({ mockId: MockInterview.mockId });
 
-      if (resp) {
-        setOpenDialog(false);
-        router.push("/dashboard/interview/" + resp[0]?.mockId);
+        console.log("Inserted ID:", resp);
+
+        if (resp.length > 0) {
+          setOpenDialog(false);
+          router.push(`/dashboard/interview/${resp[0]?.mockId}`);
+        }
       }
+    } catch (error) {
+      console.error("Error generating AI response:", error);
+      alert("An error occurred while generating interview questions. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error during JSON parsing or API call:", error);
-    // Handle the error appropriately here
-    setLoading(false);
-  }
-
-  setLoading(false);
-};
-
+  };
 
   return (
     <div>
@@ -95,37 +96,43 @@ const AddNewInterview = () => {
       >
         <h2 className="text-lg text-center">+ Add New</h2>
       </div>
-      <Dialog open={openDialog}>
+
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl">
-              Tell us more about your job interviewing
+              Tell us about the interview
             </DialogTitle>
-            {/* Replace <DialogDescription> with a <div> */}
+
             <div className="text-sm text-muted-foreground">
               <form onSubmit={onSubmit}>
                 <div className="my-3">
                   <h2 className="text-lg font-semibold">
-                    Add details about your job position, job description, and years of experience
+                    Add details about your job role, description, and experience
                   </h2>
+
                   <div className="mt-7 my-3">
                     <label className="text-black">Job Role/Position</label>
                     <Input
                       className="mt-1"
                       placeholder="Ex. Full Stack Developer"
                       required
+                      value={jobPosition}
                       onChange={(e) => setJobPosition(e.target.value)}
                     />
                   </div>
+
                   <div className="my-5">
-                    <label className="text-black">Job Description/Tech Stack (In Short)</label>
+                    <label className="text-black">Job Description/Tech Stack</label>
                     <Textarea
                       className="placeholder-opacity-50"
-                      placeholder="Ex. React, Angular, Node.js, MySQL, NoSQL, Python"
+                      placeholder="Ex. React, Angular, Node.js, Python"
                       required
+                      value={jobDesc}
                       onChange={(e) => setJobDesc(e.target.value)}
                     />
                   </div>
+
                   <div className="my-5">
                     <label className="text-black">Years of Experience</label>
                     <Input
@@ -134,10 +141,12 @@ const AddNewInterview = () => {
                       max="50"
                       type="number"
                       required
+                      value={jobExperience}
                       onChange={(e) => setJobExperience(e.target.value)}
                     />
                   </div>
                 </div>
+
                 <div className="flex gap-5 justify-end">
                   <Button type="button" variant="ghost" onClick={() => setOpenDialog(false)}>
                     Cancel
@@ -146,7 +155,7 @@ const AddNewInterview = () => {
                     {loading ? (
                       <>
                         <LoaderCircle className="animate-spin" />
-                        Generating From AI
+                        Generating AI Questions...
                       </>
                     ) : (
                       "Start Interview"
@@ -157,7 +166,6 @@ const AddNewInterview = () => {
             </div>
           </DialogHeader>
         </DialogContent>
-
       </Dialog>
     </div>
   );
